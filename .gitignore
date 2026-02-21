@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Python cache
 __pycache__/
 *.py[cod]
@@ -12,3 +13,7 @@ env/
 
 # VS Code
 .vscode/
+=======
+.env
+.venv/
+>>>>>>> 9caf489e3286361f99c01d9620516cea4c96f37b
