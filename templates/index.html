@@ -1,8 +1,26 @@
 {% extends "base.html" %}
 
-{% block title %}Home - Flask Starter{% endblock %}
+{% block title %}TrustBase | Home{% endblock %}
 
 {% block content %}
-<h1>Hello, Flask 👋</h1>
-<p>Your template is working.</p>
+<section class="hero">
+	<h1>Privacy policy truth, verified.</h1>
+	<p>Run automated policy and cookie checks from a single URL to quickly spot trust and compliance risks.</p>
+	<a class="hero-cta" href="{{ url_for('compare') }}">Start Audit</a>
+</section>
+
+<section class="home-grid">
+	<article>
+		<h2>Policy Signal Detection</h2>
+		<p>Flags risky language patterns, vague terms, and high-risk data collection signals.</p>
+	</article>
+	<article>
+		<h2>Cookie Behavior Review</h2>
+		<p>Compares real observed cookie behavior with published policy statements.</p>
+	</article>
+	<article>
+		<h2>Actionable Risk Summaries</h2>
+		<p>Delivers clear grade outputs and reason tags designed for fast decision-making.</p>
+	</article>
+</section>
 {% endblock %}

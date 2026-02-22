@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 import re
+import importlib
 from typing import Any
+from urllib.parse import urljoin, urlparse
+
+import requests
+from bs4 import BeautifulSoup
 
 TRACKER_PATTERNS = {
     "analytics": [r"_ga", r"_gid", r"_gat", r"analytics", r"mixpanel", r"amplitude", r"segment"],
@@ -16,6 +21,226 @@ DISCLOSURE_TERMS = {
     "session": ["strictly necessary", "essential cookies", "authentication", "session cookies"],
     "functional": ["preferences", "functional cookies", "site settings", "language settings"],
 }
+
+
+CONSENT_BUTTON_PATTERNS = {
+    "after_accept": [
+        r"accept",
+        r"allow",
+        r"agree",
+        r"ok",
+        r"i\s*agree",
+    ],
+    "after_reject": [
+        r"reject",
+        r"decline",
+        r"deny",
+        r"refuse",
+        r"necessary\s*only",
+    ],
+}
+
+
+ARCHIVE_REPOS = [
+    "OpenTermsArchive/pga-versions",
+    "citp/privacy-policy-historical",
+]
+
+
+def _normalize_url(site_url: str) -> str:
+    url = site_url.strip()
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+    return url
+
+
+def _domain_key(site_url: str) -> str:
+    netloc = urlparse(site_url).netloc.lower()
+    if netloc.startswith("www."):
+        netloc = netloc[4:]
+    return netloc
+
+
+def _fetch_html(url: str, timeout: int = 20) -> str:
+    response = requests.get(
+        url,
+        timeout=timeout,
+        headers={"User-Agent": "Mozilla/5.0 (Privacy-Audit-Bot)"},
+    )
+    response.raise_for_status()
+    return response.text
+
+
+def _extract_text_from_html(html: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    for node in soup(["script", "style", "noscript"]):
+        node.decompose()
+    text = soup.get_text("\n")
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    return "\n".join(lines)
+
+
+def _find_policy_links(base_url: str, html: str) -> list[str]:
+    soup = BeautifulSoup(html, "html.parser")
+    links: list[str] = []
+    keywords = ("privacy", "policy", "terms", "tos")
+
+    for anchor in soup.find_all("a", href=True):
+        href = anchor.get("href", "")
+        anchor_text = (anchor.get_text(" ") or "").lower()
+        href_lower = href.lower()
+        if any(key in href_lower for key in keywords) or any(key in anchor_text for key in keywords):
+            links.append(urljoin(base_url, href))
+
+    deduped: list[str] = []
+    seen = set()
+    for link in links:
+        if link not in seen:
+            deduped.append(link)
+            seen.add(link)
+    return deduped
+
+
+def _github_tree_paths(repo: str) -> list[str]:
+    for branch in ("main", "master"):
+        api_url = f"https://api.github.com/repos/{repo}/git/trees/{branch}?recursive=1"
+        response = requests.get(api_url, timeout=25)
+        if response.status_code == 200:
+            data = response.json()
+            return [item.get("path", "") for item in data.get("tree", []) if item.get("type") == "blob"]
+    return []
+
+
+def _github_raw_url(repo: str, path: str) -> str:
+    return f"https://raw.githubusercontent.com/{repo}/main/{path}"
+
+
+def _fetch_policy_from_archive(site_url: str) -> dict[str, Any]:
+    domain = _domain_key(site_url)
+    domain_tokens = [domain, domain.replace(".", "-"), domain.split(".")[0]]
+    policy_tokens = ("privacy", "policy", "terms", "tos")
+
+    for repo in ARCHIVE_REPOS:
+        try:
+            paths = _github_tree_paths(repo)
+        except Exception:
+            continue
+
+        matched_paths = []
+        for path in paths:
+            lower_path = path.lower()
+            if any(token in lower_path for token in domain_tokens) and any(token in lower_path for token in policy_tokens):
+                matched_paths.append(path)
+
+        for path in matched_paths[:3]:
+            raw_url = _github_raw_url(repo, path)
+            try:
+                response = requests.get(raw_url, timeout=20)
+                if response.status_code != 200:
+                    continue
+                text = response.text.strip()
+                if len(text) < 200:
+                    continue
+                return {
+                    "ok": True,
+                    "text": text,
+                    "source_url": raw_url,
+                    "source_label": f"Archive ({repo})",
+                }
+            except Exception:
+                continue
+
+    return {
+        "ok": False,
+        "text": "",
+        "source_url": "",
+        "source_label": "",
+    }
+
+
+def fetch_policy_text_for_site(site_url: str) -> dict[str, Any]:
+    target_url = _normalize_url(site_url)
+
+    try:
+        homepage_html = _fetch_html(target_url)
+        candidate_links = _find_policy_links(target_url, homepage_html)
+
+        for link in candidate_links[:8]:
+            try:
+                html = _fetch_html(link)
+                text = _extract_text_from_html(html)
+                if len(text) >= 400:
+                    return {
+                        "ok": True,
+                        "text": text,
+                        "source_url": link,
+                        "source_label": "Site policy page",
+                    }
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+    archive_result = _fetch_policy_from_archive(target_url)
+    if archive_result.get("ok"):
+        return archive_result
+
+    return {
+        "ok": False,
+        "text": "",
+        "source_url": "",
+        "source_label": "",
+        "error": "Could not auto-find policy/TOS on the site or the configured archives.",
+    }
+
+
+def auto_collect_cookies(site_url: str, consent_state: str) -> dict[str, Any]:
+    try:
+        playwright_sync_api = importlib.import_module("playwright.sync_api")
+        sync_playwright = getattr(playwright_sync_api, "sync_playwright")
+    except Exception:
+        return {
+            "ok": False,
+            "error": "Playwright is not installed. Run: pip install playwright && playwright install chromium",
+            "cookie_names": [],
+        }
+
+    try:
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+            context = browser.new_context()
+            page = context.new_page()
+            page.goto(site_url, wait_until="domcontentloaded", timeout=30000)
+            page.wait_for_timeout(2000)
+
+            clicked = None
+            if consent_state in {"after_accept", "after_reject"}:
+                patterns = CONSENT_BUTTON_PATTERNS[consent_state]
+                for pattern in patterns:
+                    button = page.get_by_role("button", name=re.compile(pattern, re.IGNORECASE)).first
+                    if button.is_visible(timeout=1000):
+                        button.click(timeout=2000)
+                        clicked = pattern
+                        page.wait_for_timeout(1500)
+                        break
+
+            cookies = context.cookies()
+            browser.close()
+
+            cookie_names = sorted({cookie.get("name", "") for cookie in cookies if cookie.get("name")}, key=str.lower)
+            return {
+                "ok": True,
+                "error": None,
+                "cookie_names": cookie_names,
+                "clicked_pattern": clicked,
+                "count": len(cookie_names),
+            }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": f"Auto collection failed: {exc}",
+            "cookie_names": [],
+        }
 
 
 def parse_observed_cookies(raw_text: str) -> list[str]:

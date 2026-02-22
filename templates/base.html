@@ -3,21 +3,64 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}TrustBase{% endblock %}</title>
+    <title>{% block title %}TrustBase | Privacy Risk Intelligence{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body>
-    <main class="card">
-        <nav>
-            <a href="{{ url_for('home') }}">Home</a>
-            |
-            <a href="{{ url_for('about') }}">About</a>
-            |
-            <a href="{{ url_for('compare') }}">Compare</a>
-            |
-            <a href="{{ url_for('cookie_audit') }}">Cookie Audit</a>
-        </nav>
-        {% block content %}{% endblock %}
+    <header class="site-header" id="siteHeader">
+        <div class="nav-wrap">
+            <a class="brand" href="{{ url_for('home') }}">
+                <img class="brand-logo" src="{{ url_for('static', filename='trustbase.png') }}" alt="TrustBase logo" />
+            </a>
+            <nav class="top-nav">
+                <a href="{{ url_for('home') }}" class="{% if request.endpoint == 'home' %}active{% endif %}">Home</a>
+                <a href="{{ url_for('compare') }}" class="{% if request.endpoint in ['compare', 'cookie_audit'] %}active{% endif %}">Audit</a>
+                <a href="{{ url_for('about') }}" class="{% if request.endpoint == 'about' %}active{% endif %}">About</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="app-shell">
+        <section class="card">
+            {% block content %}{% endblock %}
+        </section>
     </main>
+
+    <footer class="site-footer">
+        <p>TrustBase © 2026 • Privacy Risk Intelligence</p>
+    </footer>
+
+    <script>
+        (function () {
+            const header = document.getElementById("siteHeader");
+            if (!header) return;
+
+            let lastY = window.scrollY;
+
+            function onScroll() {
+                const currentY = window.scrollY;
+
+                if (currentY <= 8) {
+                    header.classList.remove("nav-hidden");
+                    header.classList.remove("scrolled");
+                    lastY = currentY;
+                    return;
+                }
+
+                header.classList.add("scrolled");
+
+                if (currentY > lastY && currentY > 70) {
+                    header.classList.add("nav-hidden");
+                } else {
+                    header.classList.remove("nav-hidden");
+                }
+
+                lastY = currentY;
+            }
+
+            window.addEventListener("scroll", onScroll, { passive: true });
+            onScroll();
+        })();
+    </script>
 </body>
 </html>

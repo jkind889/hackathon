@@ -1,8 +1,107 @@
 {% extends "base.html" %}
 
-{% block title %}About - Flask Starter{% endblock %}
+{% block title %}TrustBase | About{% endblock %}
 
 {% block content %}
-<h1>About</h1>
-<p>This is a basic second page in your Flask app.</p>
+<h1>About TrustBase</h1>
+<p class="about-lead">TrustBase is a practical privacy and trust review workspace. It analyzes policy language, observed cookie behavior, and optional AI breach context to help teams quickly understand risk signals without reading every policy line manually.</p>
+
+<section class="about-panel">
+	<h2>How TrustBase Works</h2>
+	<p>When you run an audit, TrustBase fetches the policy/TOS context for the target site, scans the text for known privacy risk indicators, and compares those policy claims to observed cookies. If enabled, it also generates an AI-assisted breach snapshot based on prominent publicly reported incidents.</p>
+	<p>Outputs are standardized into clear sections so results are comparable run-to-run and easier to communicate across product, legal, and security teams.</p>
+</section>
+
+<section class="about-panel">
+	<h2>Core Functions</h2>
+	<ul class="about-list">
+		<li><strong>Policy Risk Analysis:</strong> Detects data collection, sharing, user-rights, retention, and ambiguity terms, then summarizes risk.</li>
+		<li><strong>Cookie Compliance Audit:</strong> Evaluates observed cookie behavior against policy disclosures and consent expectations.</li>
+		<li><strong>AI Breach Snapshot (Optional):</strong> Produces structured incident cards, source links, synopsis, and breach grade.</li>
+		<li><strong>Final Grade Aggregation:</strong> Averages available component grades (Policy, Cookie, and optional Breach).</li>
+	</ul>
+</section>
+
+<section class="about-panel">
+	<h2>How Grades Are Calculated</h2>
+	<p>Each major component produces a letter grade from A to F. TrustBase maps those grades to points (A=4, B=3, C=2, D=1, F=0), averages the available components, then converts the average back to a final letter grade.</p>
+	<p>Final risk levels are interpreted from the final letter grade: A/B = Low, C = Medium, D/F = High.</p>
+</section>
+
+<section class="about-panel">
+	<h2>Result Glossary</h2>
+	<div class="glossary-grid">
+		<article>
+			<h3>Overall Grade</h3>
+			<p>Final averaged letter grade across available audit components.</p>
+		</article>
+		<article>
+			<h3>Overall Risk Level</h3>
+			<p>Risk bucket mapped from final grade (Low, Medium, High).</p>
+		</article>
+		<article>
+			<h3>Averaged From</h3>
+			<p>Lists which component grades were included (Policy, Cookie, Breach).</p>
+		</article>
+
+		<article>
+			<h3>Policy Risk Summary</h3>
+			<p>Top-level policy-analysis section with grade and scoring metrics.</p>
+		</article>
+		<article>
+			<h3>Grade (Policy)</h3>
+			<p>Letter grade derived from policy risk score thresholds.</p>
+		</article>
+		<article>
+			<h3>Risk Level (Policy)</h3>
+			<p>Policy severity category based on grade/score interpretation.</p>
+		</article>
+		<article>
+			<h3>Risk Score</h3>
+			<p>Numeric policy risk value from detected terms and weighting.</p>
+		</article>
+		<article>
+			<h3>Total Hits</h3>
+			<p>Total count of matched policy risk terms across categories.</p>
+		</article>
+		<article>
+			<h3>Weasel Hits</h3>
+			<p>Count of vague/ambiguous policy terms that reduce clarity.</p>
+		</article>
+
+		<article>
+			<h3>Cookie Audit Summary</h3>
+			<p>Top-level cookie behavior vs disclosure consistency section.</p>
+		</article>
+		<article>
+			<h3>Grade (Cookie)</h3>
+			<p>Letter grade from cookie truthfulness score.</p>
+		</article>
+		<article>
+			<h3>Score (Cookie)</h3>
+			<p>Numeric cookie compliance score (0 to 100).</p>
+		</article>
+		<article>
+			<h3>Risk Level (Cookie)</h3>
+			<p>Cookie compliance severity category from score band.</p>
+		</article>
+		<article>
+			<h3>Consent State</h3>
+			<p>Collection phase used for cookie evidence (for example before consent).</p>
+		</article>
+
+		<article>
+			<h3>Cookie Compliance Signals</h3>
+			<p>Detailed issue cards showing mismatch indicators and severity.</p>
+		</article>
+		<article>
+			<h3>Observed Cookie Inventory</h3>
+			<p>Raw list of detected cookie names collected during audit.</p>
+		</article>
+		<article>
+			<h3>Annotated Policy Text</h3>
+			<p>Policy excerpt with detected risk terms highlighted inline.</p>
+		</article>
+	</div>
+</section>
 {% endblock %}

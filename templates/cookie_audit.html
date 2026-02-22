@@ -7,12 +7,17 @@
 <p>Score a site's cookie behavior against its policy disclosures.</p>
 
 <form method="post" class="compare-form">
+    <label for="site_url">Site URL (for auto-check)</label>
+    <input id="site_url" name="site_url" class="input-select" placeholder="https://example.com" value="{{ site_url }}" />
+
     <label for="consent_state">When were cookies captured?</label>
     <select id="consent_state" name="consent_state" class="input-select">
         <option value="before_consent" {% if consent_state == "before_consent" %}selected{% endif %}>Before consent</option>
         <option value="after_reject" {% if consent_state == "after_reject" %}selected{% endif %}>After reject all</option>
         <option value="after_accept" {% if consent_state == "after_accept" %}selected{% endif %}>After accept all</option>
     </select>
+
+    <label><input type="checkbox" name="use_auto_fetch" /> Auto collect cookies from URL</label>
 
     <label for="policy_text">Policy/TOS snippet</label>
     <textarea id="policy_text" name="policy_text" rows="8" placeholder="Paste relevant policy text...">{{ policy_text }}</textarea>
@@ -24,6 +29,13 @@ sessionid=abc...">{{ observed_cookies }}</textarea>
 
     <button type="submit">Score Truthfulness</button>
 </form>
+
+{% if auto_message %}
+<section class="result-card single-result">
+    <p>{{ auto_message }}</p>
+    <p><small>Tip: first time setup needs <strong>playwright install chromium</strong>.</small></p>
+</section>
+{% endif %}
 
 {% if result %}
 <section class="result-card single-result">

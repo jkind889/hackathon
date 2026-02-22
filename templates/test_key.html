@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Test Gemini Key{% endblock %}
+
+{% block content %}
+<h1>Gemini API Key Test</h1>
+<p>Run a quick connectivity test using your <strong>GEMINI_API_KEY</strong> from <strong>.env</strong>.</p>
+
+<form method="post" class="compare-form">
+    <button type="submit">Run Key Test</button>
+</form>
+
+{% if status %}
+<section class="result-card single-result">
+    <h2>Status</h2>
+    <p>{{ status }}</p>
+</section>
+{% endif %}
+
+{% if response_text %}
+<section class="result-card single-result">
+    <h2>Model Response</h2>
+    <pre class="policy-text">{{ response_text }}</pre>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,47 +1,178 @@
 {% extends "base.html" %}
 
-{% block title %}Compare - Flask Starter{% endblock %}
+{% block title %}TrustBase | Policy & Cookie Compliance Audit{% endblock %}
 
 {% block content %}
-<h1>Policy Risk Grader</h1>
-<p>Paste one privacy policy text to grade it and highlight dangerous wording.</p>
+<section class="page-intro centered-text">
+	<h1>TrustBase Risk Audit</h1>
+	<p>Enter a website URL to run an automated privacy policy and cookie compliance review.</p>
+</section>
 
 <form method="post" class="compare-form">
-	<label for="policy_text">Policy Input</label>
-	<textarea id="policy_text" name="policy_text" rows="12" placeholder="Paste privacy policy text here...">{{ policy_text }}</textarea>
+	<label for="site_url">Site URL</label>
+	<input id="site_url" name="site_url" class="input-select" placeholder="https://example.com" value="{{ site_url }}" />
 
-	<button type="submit">Grade Policy</button>
+	<label class="inline-check">
+		<input type="checkbox" name="include_breach_lookup" {% if include_breach_lookup %}checked{% endif %} />
+		Include AI breach lookup
+	</label>
+
+	<button type="submit" class="cta-button">Run Audit</button>
 </form>
 
+{% if auto_message %}
+<section class="single-result alert success">
+	<p>{{ auto_message }}</p>
+</section>
+{% endif %}
+
+{% if policy_error %}
+<section class="single-result alert error">
+	<p>{{ policy_error }}</p>
+</section>
+{% endif %}
+
+{% if cookie_error %}
+<section class="single-result alert error">
+	<p>{{ cookie_error }}</p>
+</section>
+{% endif %}
+
+{% if breach_error %}
+<section class="single-result alert error">
+	<p>{{ breach_error }}</p>
+</section>
+{% endif %}
+
+{% if final_grade %}
+<section class="result-card single-result primary-summary final-grade-hero">
+	<h2>Final TrustBase Grade</h2>
+	<p><strong>Overall Grade:</strong> <span class="grade final-grade-badge grade-{{ final_grade_risk|lower }}">{{ final_grade }}</span></p>
+	<p><strong>Overall Risk Level:</strong> {{ final_grade_risk }}</p>
+	<p><strong>Averaged From:</strong>
+		{% for item in final_grade_components %}
+		{{ item.label }} ({{ item.grade }}){% if not loop.last %}, {% endif %}
+		{% endfor %}
+	</p>
+</section>
+{% endif %}
+
 {% if report %}
-<section class="result-card single-result">
-	<h2>Risk Summary</h2>
+<section class="result-card single-result primary-summary">
+	<h2>Policy Risk Summary</h2>
 	<p><strong>Grade:</strong> <span class="grade grade-{{ report.risk_level|lower }}">{{ grade }}</span></p>
 	<p><strong>Risk Level:</strong> {{ report.risk_level }}</p>
 	<p><strong>Risk Score:</strong> {{ report.risk_score }}</p>
 	<p><strong>Total Hits:</strong> {{ report.summary.total_hits }}</p>
 	<p><strong>Weasel Hits:</strong> {{ report.summary.weasel_word_hits }}</p>
-</section>
+	{% if policy_source_url %}
+	<p><strong>Policy Source:</strong> {{ policy_source_label }} — <a href="{{ policy_source_url }}" target="_blank" rel="noopener noreferrer">{{ policy_source_url }}</a></p>
+	{% endif %}
 
-<section class="result-card single-result">
-	<h2>Detected Dangers</h2>
+	<details class="detail-block" open>
+		<summary>Policy Risk Signals</summary>
 	{% if flaws %}
-	<ul class="flaw-list">
+	<ul class="flaw-list danger-grid">
 		{% for flaw in flaws %}
 		<li>
 			<span class="severity severity-{{ flaw.severity }}">{{ flaw.severity|upper }}</span>
 			{{ flaw.term }} (x{{ flaw.count }})
+			<div class="flaw-reason flaw-reason-{{ flaw.severity }}">{{ flaw.reason }}</div>
 		</li>
 		{% endfor %}
 	</ul>
 	{% else %}
-	<p>No dangerous terms were detected.</p>
+	<p>No material policy risk signals detected.</p>
 	{% endif %}
-</section>
-
-<section class="result-card single-result">
-	<h2>Highlighted Policy Text</h2>
-	{{ highlighted_text }}
+	</details>
 </section>
 {% endif %}
+
+{% if cookie_result %}
+<section class="result-card single-result primary-summary">
+	<h2>Cookie Audit Summary</h2>
+	<p><strong>Grade:</strong> <span class="grade grade-{{ cookie_result.risk_level|lower }}">{{ cookie_result.grade }}</span></p>
+	<p><strong>Score:</strong> {{ cookie_result.score }}/100</p>
+	<p><strong>Risk Level:</strong> {{ cookie_result.risk_level }}</p>
+	<p><strong>Consent State:</strong> {{ cookie_result.consent_state }}</p>
+
+	<details class="detail-block" open>
+		<summary>Cookie Compliance Signals</summary>
+	{% if cookie_result.issues %}
+	<ul class="flaw-list danger-grid">
+		{% for issue in cookie_result.issues %}
+		<li>
+			<span class="severity severity-{{ issue.severity }}">{{ issue.severity|upper }}</span>
+			<strong>{{ issue.title }}</strong> — {{ issue.detail }}
+		</li>
+		{% endfor %}
+	</ul>
+	{% else %}
+	<p>No major policy-to-cookie mismatches detected.</p>
+	{% endif %}
+	</details>
+
+	<details class="detail-block">
+		<summary>Observed Cookie Inventory</summary>
+	<pre class="policy-text">{{ observed_cookies }}</pre>
+    </details>
+</section>
+{% endif %}
+
+{% if breach_snapshot %}
+<section class="result-card single-result primary-summary">
+	<h2>AI Breach Snapshot</h2>
+	{% if breach_grade %}
+	<p><strong>Breach Grade:</strong> <span class="grade grade-{{ breach_risk_level|lower }}">{{ breach_grade }}</span></p>
+	<p><strong>Breach Risk Level:</strong> {{ breach_risk_level }}</p>
+	{% endif %}
+
+	{% if breach_items %}
+	<ul class="flaw-list danger-grid">
+		{% for item in breach_items %}
+		<li class="incident-card">
+			<span class="severity severity-{{ item.severity }}">{{ item.severity|upper }}</span>
+			<div class="incident-meta"><strong>Date:</strong> {{ item.date }}</div>
+			<div class="incident-meta"><strong>Event:</strong> {{ item.event }}</div>
+			<div class="incident-text"><strong>Impact:</strong> {{ item.impact }}</div>
+			{% if item.source_url %}
+			<div class="incident-link"><a href="{{ item.source_url }}" target="_blank" rel="noopener noreferrer">Source</a></div>
+			{% endif %}
+		</li>
+		{% endfor %}
+	</ul>
+	{% else %}
+	<pre class="policy-text">{{ breach_snapshot }}</pre>
+	{% endif %}
+
+	{% if breach_synopsis %}
+	<p class="breach-synopsis"><strong>Synopsis:</strong> {{ breach_synopsis }}</p>
+	{% endif %}
+
+	{% if breach_sources %}
+	<details class="detail-block">
+		<summary>Incident Sources</summary>
+		<ul class="source-list">
+			{% for src in breach_sources %}
+			<li><a href="{{ src }}" target="_blank" rel="noopener noreferrer">{{ src }}</a></li>
+			{% endfor %}
+		</ul>
+	</details>
+	{% endif %}
+</section>
+{% endif %}
+
+{% if report %}
+<section class="result-card single-result compact">
+	<details class="detail-block">
+		<summary>Annotated Policy Text</summary>
+		{{ highlighted_text }}
+    </details>
+</section>
+{% endif %}
+
+<section class="about-strip">
+	<h2>About TrustBase</h2>
+	<p>TrustBase provides fast, evidence-based checks to evaluate whether published privacy language aligns with real cookie behavior.</p>
+</section>
 {% endblock %}
